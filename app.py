@@ -51,6 +51,7 @@ sleep_labels = {
 
 @app.get("/")
 def home():
+
     return {
         "message": "Sleep Detection API Running Successfully"
     }
@@ -67,7 +68,7 @@ async def predict_sleep(file: UploadFile = File(...)):
     try:
 
         # ====================================================
-        # SAVE TEMP FILE
+        # SAVE EDF FILE TEMPORARILY
         # ====================================================
 
         with tempfile.NamedTemporaryFile(
@@ -87,12 +88,12 @@ async def predict_sleep(file: UploadFile = File(...)):
 
         raw = mne.io.read_raw_edf(
             temp_path,
-            preload=False,
+            preload=True,
             verbose=False
         )
 
         # ====================================================
-        # FILTER EEG
+        # FILTER EEG SIGNAL
         # ====================================================
 
         raw.filter(
@@ -102,7 +103,7 @@ async def predict_sleep(file: UploadFile = File(...)):
         )
 
         # ====================================================
-        # GET FIRST EEG CHANNEL
+        # EXTRACT FIRST EEG CHANNEL
         # ====================================================
 
         signal = raw.get_data()[0]
@@ -163,7 +164,7 @@ async def predict_sleep(file: UploadFile = File(...)):
         X_scaled = scaler.transform(features)
 
         # ====================================================
-        # PREDICT
+        # PREDICT SLEEP STAGE
         # ====================================================
 
         prediction = model.predict(X_scaled)[0]
@@ -194,6 +195,7 @@ async def predict_sleep(file: UploadFile = File(...)):
         # ====================================================
 
         if temp_path and os.path.exists(temp_path):
+
             os.remove(temp_path)
 
 # ============================================================
