@@ -6,6 +6,7 @@ from scipy.signal import welch
 from scipy.stats import skew, kurtosis
 import mne
 import tempfile
+import os
 
 # ============================================================
 # CREATE FASTAPI APP
@@ -37,11 +38,11 @@ scaler = joblib.load("scaler.pkl")
 # ============================================================
 
 sleep_labels = {
-    0: 'Wake',
-    1: 'N1',
-    2: 'N2',
-    3: 'Deep',
-    4: 'REM'
+    0: "Wake",
+    1: "N1",
+    2: "N2",
+    3: "Deep",
+    4: "REM"
 }
 
 # ============================================================
@@ -61,12 +62,22 @@ def home():
 @app.post("/predict")
 async def predict_sleep(file: UploadFile = File(...)):
 
+    temp_path = None
+
     try:
 
-        # Save uploaded EDF file temporarily
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".edf") as tmp:
+        # ====================================================
+        # SAVE TEMP FILE
+        # ====================================================
 
-            tmp.write(await file.read())
+        with tempfile.NamedTemporaryFile(
+            delete=False,
+            suffix=".edf"
+        ) as tmp:
+
+            content = await file.read()
+
+            tmp.write(content)
 
             temp_path = tmp.name
 
@@ -76,12 +87,12 @@ async def predict_sleep(file: UploadFile = File(...)):
 
         raw = mne.io.read_raw_edf(
             temp_path,
-            preload=True,
+            preload=False,
             verbose=False
         )
 
         # ====================================================
-        # FILTER EEG SIGNAL
+        # FILTER EEG
         # ====================================================
 
         raw.filter(
@@ -91,10 +102,13 @@ async def predict_sleep(file: UploadFile = File(...)):
         )
 
         # ====================================================
-        # EXTRACT FIRST EEG CHANNEL
+        # GET FIRST EEG CHANNEL
         # ====================================================
 
         signal = raw.get_data()[0]
+
+        # Reduce memory usage
+        signal = signal[:3000]
 
         # ====================================================
         # FEATURE EXTRACTION
@@ -149,7 +163,7 @@ async def predict_sleep(file: UploadFile = File(...)):
         X_scaled = scaler.transform(features)
 
         # ====================================================
-        # PREDICT SLEEP STAGE
+        # PREDICT
         # ====================================================
 
         prediction = model.predict(X_scaled)[0]
@@ -173,8 +187,17 @@ async def predict_sleep(file: UploadFile = File(...)):
             "error": str(e)
         }
 
+    finally:
+
+        # ====================================================
+        # DELETE TEMP FILE
+        # ====================================================
+
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
+
 # ============================================================
-# RUN SERVER LOCALLY
+# LOCAL SERVER
 # ============================================================
 
 if __name__ == "__main__":
