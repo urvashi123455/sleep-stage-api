@@ -27,14 +27,14 @@ app.add_middleware(
 )
 
 # ============================================================
-# LOAD MODEL AND SCALER
+# LOAD MODEL & SCALER
 # ============================================================
 
 model = joblib.load("sleep_model.pkl")
 scaler = joblib.load("scaler.pkl")
 
 # ============================================================
-# SLEEP LABELS
+# LABELS
 # ============================================================
 
 sleep_labels = {
@@ -57,7 +57,7 @@ def home():
     }
 
 # ============================================================
-# PREDICTION ROUTE
+# PREDICT ROUTE
 # ============================================================
 
 @app.post("/predict")
@@ -68,7 +68,7 @@ async def predict_sleep(file: UploadFile = File(...)):
     try:
 
         # ====================================================
-        # SAVE EDF FILE TEMPORARILY
+        # SAVE TEMP EDF FILE
         # ====================================================
 
         with tempfile.NamedTemporaryFile(
@@ -93,22 +93,15 @@ async def predict_sleep(file: UploadFile = File(...)):
         )
 
         # ====================================================
-        # FILTER EEG SIGNAL
-        # ====================================================
-
-        raw.filter(
-            0.5,
-            30,
-            verbose=False
-        )
-
-        # ====================================================
-        # EXTRACT FIRST EEG CHANNEL
+        # GET FIRST EEG CHANNEL
         # ====================================================
 
         signal = raw.get_data()[0]
 
-        # Reduce memory usage
+        # ====================================================
+        # REDUCE MEMORY USAGE
+        # ====================================================
+
         signal = signal[:3000]
 
         # ====================================================
@@ -164,7 +157,7 @@ async def predict_sleep(file: UploadFile = File(...)):
         X_scaled = scaler.transform(features)
 
         # ====================================================
-        # PREDICT SLEEP STAGE
+        # PREDICT
         # ====================================================
 
         prediction = model.predict(X_scaled)[0]
